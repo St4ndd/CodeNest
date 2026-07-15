@@ -214,6 +214,14 @@ fn path_exists(path: String) -> bool {
     Path::new(&path).exists()
 }
 
+/// Creates a directory (and any missing parents) if it doesn't exist yet.
+/// Used for the default projects folder, which is just a computed path
+/// (`Documents\CodeNest\Projects`) until something actually needs it to exist.
+#[tauri::command]
+fn ensure_dir(path: String) -> Result<(), String> {
+    fs::create_dir_all(path).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn is_directory(path: String) -> bool {
     Path::new(&path).is_dir()
@@ -289,6 +297,41 @@ fn duplicate_folder(src: String, dst: String) -> Result<(), String> {
         return Err(format!("Target folder already exists: {}", dst.display()));
     }
     copy_dir_recursive(src, dst).map_err(|e| e.to_string())
+}
+
+/// Moves a folder, used when importing a project into the default projects
+/// folder. Tries a plain rename first (instant, same-volume); falls back to a
+/// full recursive copy (nothing skipped, unlike `duplicate_folder`) + delete
+/// of the source for cross-volume moves, since `fs::rename` can't cross drives.
+#[tauri::command]
+fn move_folder(src: String, dst: String) -> Result<(), String> {
+    let src = Path::new(&src);
+    let dst = Path::new(&dst);
+    if dst.exists() {
+        return Err(format!("Target folder already exists: {}", dst.display()));
+    }
+    if let Some(parent) = dst.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    if fs::rename(src, dst).is_ok() {
+        return Ok(());
+    }
+    copy_dir_all(src, dst).map_err(|e| e.to_string())?;
+    fs::remove_dir_all(src).map_err(|e| e.to_string())
+}
+
+fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let dst_path = dst.join(entry.file_name());
+        if entry.path().is_dir() {
+            copy_dir_all(&entry.path(), &dst_path)?;
+        } else {
+            fs::copy(entry.path(), &dst_path)?;
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -1798,11 +1841,28 @@ fn default_projects_dir(app: AppHandle) -> String {
     dir.to_string_lossy().to_string()
 }
 
+/// Reads `settings.windowPresets[settings.activeWindowPreset]` straight out of
+/// codenest.json and resizes the (still-hidden) main window before it's shown,
+/// so the saved preset applies natively at startup instead of only via the
+/// frontend's live-preview resize in Settings.
+fn apply_saved_window_size(app: &AppHandle, window: &tauri::WebviewWindow) {
+    let Ok(data_path) = data_file(app) else { return };
+    let Ok(raw) = fs::read_to_string(&data_path) else { return };
+    let Ok(json) = serde_json::from_str::<serde_json::Value>(&raw) else { return };
+    let preset_key = json["settings"]["activeWindowPreset"].as_str().unwrap_or("middle");
+    let preset = &json["settings"]["windowPresets"][preset_key];
+    if let (Some(width), Some(height)) = (preset["width"].as_f64(), preset["height"].as_f64()) {
+        let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(ProcessState::default())
         .manage(SysState(Mutex::new(System::new())))
         .manage(CloseToTray::default())
@@ -1812,11 +1872,13 @@ pub fn run() {
             send_input,
             check_tool,
             path_exists,
+            ensure_dir,
             is_directory,
             read_file,
             write_file,
             write_project_files,
             duplicate_folder,
+            move_folder,
             process_stats,
             detect_ides,
             open_in_ide,
@@ -1872,6 +1934,10 @@ pub fn run() {
             builder.build(app)?;
 
             if let Some(window) = app.get_webview_window("main") {
+                apply_saved_window_size(app.handle(), &window);
+                let _ = window.center();
+                let _ = window.show();
+
                 let window_handle = window.clone();
                 window.on_window_event(move |event| {
                     if let WindowEvent::CloseRequested { api, .. } = event {

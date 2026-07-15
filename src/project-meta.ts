@@ -1,5 +1,49 @@
 import { presetById } from "./presets";
+import { pathExists, writeFile } from "./backend";
 import type { CustomPreset, Group, Project, RunConfig } from "./types";
+
+/** Broad, tech-agnostic .gitignore used for new/imported projects that don't
+ * already have one — most scaffolding tools (npm create, dotnet new, cargo
+ * new, …) ship their own, so this mainly covers "Empty project" and imports. */
+const DEFAULT_GITIGNORE = `# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+out/
+bin/
+obj/
+
+# Env / secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE / OS
+.vs/
+.idea/
+*.user
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+`;
+
+/** Writes a .gitignore into `path` unless one is already there or the setting is off. */
+export async function ensureGitignore(path: string, enabled: boolean): Promise<void> {
+  if (!enabled) return;
+  if (await pathExists(`${path}\\.gitignore`)) return;
+  await writeFile(`${path}\\.gitignore`, DEFAULT_GITIGNORE);
+}
 
 /** Flattens groups into tree order (parents before children) with depth, for
  * indented rendering in selects and lists. */

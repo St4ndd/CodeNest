@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import type { AppData, Group, IdeConfig, TerminalProfile } from "../types";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { LogicalSize } from "@tauri-apps/api/dpi";
+import { getVersion } from "@tauri-apps/api/app";
+import { check as checkForUpdate, type Update } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
+import type { AppData, Group, IdeConfig, TerminalProfile, WindowPresetKey } from "../types";
 import { detectIdes } from "../backend";
 import { groupTree } from "../project-meta";
 import { IconPlus, IconRefresh, IconStar, IconTag, IconTrash } from "../icons";
@@ -10,6 +15,12 @@ const TERMINAL_PROFILES: { id: TerminalProfile; label: string }[] = [
   { id: "powershell", label: "PowerShell" },
   { id: "gitbash", label: "Git Bash" },
   { id: "wsl", label: "WSL" },
+];
+
+const WINDOW_PRESET_LABELS: { id: WindowPresetKey; label: string }[] = [
+  { id: "small", label: "Small" },
+  { id: "middle", label: "Middle" },
+  { id: "big", label: "Big" },
 ];
 
 interface SettingsProps {
@@ -27,6 +38,43 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
   const [newGroupParentId, setNewGroupParentId] = useState("");
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [appVersion, setAppVersion] = useState("");
+  const [updateState, setUpdateState] = useState<
+    "idle" | "checking" | "none" | "available" | "installing"
+  >("idle");
+  const [pendingUpdate, setPendingUpdate] = useState<Update | null>(null);
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
+
+  async function checkUpdates() {
+    setUpdateState("checking");
+    try {
+      const update = await checkForUpdate();
+      if (update) {
+        setPendingUpdate(update);
+        setUpdateState("available");
+      } else {
+        setUpdateState("none");
+      }
+    } catch (err) {
+      setUpdateState("idle");
+      toast(`Update check failed: ${err}`);
+    }
+  }
+
+  async function installUpdate() {
+    if (!pendingUpdate) return;
+    setUpdateState("installing");
+    try {
+      await pendingUpdate.downloadAndInstall();
+      await relaunch();
+    } catch (err) {
+      setUpdateState("available");
+      toast(`Update failed: ${err}`);
+    }
+  }
 
   function update(patch: Partial<AppData["settings"]>) {
     onChange({ ...data, settings: { ...settings, ...patch } });
@@ -35,6 +83,22 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
   async function browseProjectsDir() {
     const dir = await open({ directory: true, title: "Default projects folder" });
     if (typeof dir === "string") update({ projectsDir: dir });
+  }
+
+  function updateWindowPreset(key: WindowPresetKey, patch: Partial<{ width: number; height: number }>) {
+    update({
+      windowPresets: {
+        ...settings.windowPresets,
+        [key]: { ...settings.windowPresets[key], ...patch },
+      },
+    });
+  }
+
+  async function tryWindowSize(key: WindowPresetKey) {
+    const { width, height } = settings.windowPresets[key];
+    const win = getCurrentWindow();
+    await win.setSize(new LogicalSize(width, height));
+    await win.center();
   }
 
   async function rescan() {
@@ -161,6 +225,22 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
             Browse…
           </button>
         </div>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.moveImportedProjects}
+            onChange={(e) => update({ moveImportedProjects: e.target.checked })}
+          />
+          When importing a folder, move it into the default projects folder
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.autoGitignore}
+            onChange={(e) => update({ autoGitignore: e.target.checked })}
+          />
+          Create a .gitignore for new/imported projects that don't already have one
+        </label>
       </div>
 
       <div className="settings-section">
@@ -349,10 +429,89 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
       </div>
 
       <div className="settings-section">
+        <h3>Window size</h3>
+        <p className="muted">
+          Set exact dimensions for three presets, then use “Try it” to resize the window live and
+          find the sizes you like. “Use at startup” picks which preset CodeNest opens with next
+          time.
+        </p>
+        <div className="window-preset-list">
+          {WINDOW_PRESET_LABELS.map(({ id, label }) => {
+            const size = settings.windowPresets[id];
+            return (
+              <div key={id} className="window-preset-row">
+                <label className="ide-radio">
+                  <input
+                    type="radio"
+                    name="active-window-preset"
+                    checked={settings.activeWindowPreset === id}
+                    onChange={() => update({ activeWindowPreset: id })}
+                  />
+                  <span className="ide-name">{label}</span>
+                </label>
+                <div className="window-preset-fields">
+                  <label>
+                    W
+                    <input
+                      type="number"
+                      min={800}
+                      max={4000}
+                      value={size.width}
+                      onChange={(e) =>
+                        updateWindowPreset(id, { width: Math.max(800, Number(e.target.value) || 0) })
+                      }
+                    />
+                  </label>
+                  <label>
+                    H
+                    <input
+                      type="number"
+                      min={600}
+                      max={3000}
+                      value={size.height}
+                      onChange={(e) =>
+                        updateWindowPreset(id, { height: Math.max(600, Number(e.target.value) || 0) })
+                      }
+                    />
+                  </label>
+                </div>
+                <button className="btn" onClick={() => tryWindowSize(id)}>
+                  Try it
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="settings-section">
         <h3>About</h3>
         <p className="muted">
-          CodeNest v0.2.0 — built with Tauri 2 + React. Your project list is stored locally.
+          CodeNest {appVersion && `v${appVersion}`} — built with Tauri 2 + React. Your project
+          list is stored locally.
         </p>
+
+        {updateState === "available" && pendingUpdate ? (
+          <div className="update-row">
+            <span>
+              Update {pendingUpdate.version} is available
+              {pendingUpdate.body ? ` — ${pendingUpdate.body}` : ""}.
+            </span>
+            <button className="btn btn-primary" onClick={installUpdate}>
+              Download &amp; install
+            </button>
+          </div>
+        ) : (
+          <button className="btn" onClick={checkUpdates} disabled={updateState === "checking"}>
+            {updateState === "checking"
+              ? "Checking…"
+              : updateState === "installing"
+                ? "Installing…"
+                : updateState === "none"
+                  ? "You're up to date"
+                  : "Check for updates"}
+          </button>
+        )}
       </div>
     </div>
   );

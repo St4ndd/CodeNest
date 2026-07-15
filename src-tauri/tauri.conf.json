@@ -15,10 +15,11 @@
         "title": "CodeNest",
         "width": 1280,
         "height": 820,
-        "minWidth": 960,
-        "minHeight": 620,
+        "minWidth": 800,
+        "minHeight": 600,
         "center": true,
-        "decorations": false
+        "decorations": false,
+        "visible": false
       }
     ],
     "security": {
@@ -28,6 +29,7 @@
   "bundle": {
     "active": true,
     "targets": "msi",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -35,5 +37,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI5RUY2NzZCM0NDODFCRkMKUldUOEc4ZzhhMmZ2S2NkWnRXMkh2WCtQSjdrUmhBcnBOUHVXV3dFeGsxOHlleFltOWJmKy9FY0EK",
+      "endpoints": [
+        "https://github.com/St4ndd/CodeNest/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

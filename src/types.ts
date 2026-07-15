@@ -72,6 +72,15 @@ export interface IdeConfig {
 
 export type TerminalProfile = "cmd" | "powershell" | "gitbash" | "wsl";
 
+export type WindowPresetKey = "small" | "middle" | "big";
+
+export interface WindowSize {
+  width: number;
+  height: number;
+}
+
+export type WindowPresets = Record<WindowPresetKey, WindowSize>;
+
 export interface Settings {
   defaultIdeId: string | null;
   projectsDir: string;
@@ -80,6 +89,12 @@ export interface Settings {
   defaultGroupId: string | null;
   closeToTray: boolean;
   terminalProfile: TerminalProfile;
+  /** When importing an existing folder, move it into `projectsDir` instead of leaving it in place. */
+  moveImportedProjects: boolean;
+  /** Create a .gitignore for new/imported projects that don't already have one. */
+  autoGitignore: boolean;
+  windowPresets: WindowPresets;
+  activeWindowPreset: WindowPresetKey;
 }
 
 export interface ApiHeader {

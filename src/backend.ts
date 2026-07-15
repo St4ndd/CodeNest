@@ -16,6 +16,8 @@ export const checkTool = (name: string) =>
 export const pathExists = (path: string) =>
   invoke<boolean>("path_exists", { path });
 
+export const ensureDir = (path: string) => invoke<void>("ensure_dir", { path });
+
 export const isDirectory = (path: string) =>
   invoke<boolean>("is_directory", { path });
 
@@ -31,6 +33,9 @@ export const writeProjectFiles = (
 
 export const duplicateFolder = (src: string, dst: string) =>
   invoke<void>("duplicate_folder", { src, dst });
+
+export const moveFolder = (src: string, dst: string) =>
+  invoke<void>("move_folder", { src, dst });
 
 export const processStats = (id: string) =>
   invoke<ProcStats | null>("process_stats", { id });

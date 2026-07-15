@@ -17,7 +17,7 @@ import type {
   RunConfig,
   StreamKind,
 } from "./types";
-import { resolveRunConfigs } from "./project-meta";
+import { ensureGitignore, resolveRunConfigs } from "./project-meta";
 import type { Preset } from "./presets";
 import {
   checkTool,
@@ -25,9 +25,11 @@ import {
   detectIdes,
   detectProjectType,
   duplicateFolder,
+  ensureDir,
   isDirectory,
   killProcess,
   loadData,
+  moveFolder,
   openExplorer,
   openInIde,
   openTerminal,
@@ -152,6 +154,8 @@ export default function App() {
           settings: { defaultIdeId: null, projectsDir: await defaultProjectsDir(), ides: [] },
           customPresets: [],
         };
+        // Falls through to the migration block below, which fills in the rest
+        // of `settings` (groups, terminalProfile, windowPresets, …) with defaults.
       }
       d.customPresets = d.customPresets ?? [];
       d.notes = d.notes ?? [];
@@ -163,6 +167,14 @@ export default function App() {
       }
       d.settings.closeToTray = d.settings.closeToTray ?? true;
       d.settings.terminalProfile = d.settings.terminalProfile ?? "cmd";
+      d.settings.moveImportedProjects = d.settings.moveImportedProjects ?? false;
+      d.settings.autoGitignore = d.settings.autoGitignore ?? true;
+      d.settings.windowPresets = d.settings.windowPresets ?? {
+        small: { width: 1024, height: 700 },
+        middle: { width: 1280, height: 820 },
+        big: { width: 1600, height: 1000 },
+      };
+      d.settings.activeWindowPreset = d.settings.activeWindowPreset ?? "middle";
       d.projects = (d.projects ?? []).map((p: any) => ({
         ...p,
         runConfigs: p.runConfigs ?? (p.runCommand ? [{ id: "run", name: "run", command: p.runCommand }] : undefined),
@@ -250,6 +262,7 @@ export default function App() {
     async (paths: string[]) => {
       const current = dataRef.current;
       if (!current) return;
+      const { projectsDir, moveImportedProjects } = current.settings;
       const additions: Project[] = [];
       for (const p of paths) {
         if (!(await isDirectory(p))) continue;
@@ -257,10 +270,32 @@ export default function App() {
         if (additions.some((x) => x.path.toLowerCase() === p.toLowerCase())) continue;
         const type = await detectProjectType(p);
         const name = p.split("\\").filter(Boolean).pop() ?? p;
+
+        let finalPath = p;
+        const alreadyInsideProjectsDir = p
+          .toLowerCase()
+          .startsWith(`${projectsDir.replace(/\\+$/, "")}\\`.toLowerCase());
+        if (moveImportedProjects && projectsDir && !alreadyInsideProjectsDir) {
+          let target = `${projectsDir.replace(/\\+$/, "")}\\${name}`;
+          let suffix = 2;
+          while (await pathExists(target)) {
+            target = `${projectsDir.replace(/\\+$/, "")}\\${name} (${suffix})`;
+            suffix++;
+          }
+          try {
+            await moveFolder(p, target);
+            finalPath = target;
+          } catch (err) {
+            toast(`Could not move "${name}" into projects folder: ${err}`);
+          }
+        }
+
+        await ensureGitignore(finalPath, current.settings.autoGitignore);
+
         additions.push({
           id: crypto.randomUUID(),
           name,
-          path: p,
+          path: finalPath,
           presetId: type,
           favorite: false,
           archived: false,
@@ -582,9 +617,7 @@ export default function App() {
         if (await pathExists(projectPath)) {
           throw new Error(`Target folder already exists: ${projectPath}`);
         }
-        if (!(await pathExists(cfg.location))) {
-          throw new Error(`Parent folder does not exist: ${cfg.location}`);
-        }
+        await ensureDir(cfg.location);
         pushLine(procId, `Creating "${cfg.name}" (${selected.name}) in ${cfg.location}`, "info");
 
         if (cfg.customPreset) {
@@ -632,6 +665,8 @@ export default function App() {
             pushLine(procId, "Git not found — skipping repository init.", "stderr");
           }
         }
+
+        await ensureGitignore(projectPath, dataRef.current!.settings.autoGitignore);
 
         const project: Project = {
           id: crypto.randomUUID(),
@@ -683,9 +718,7 @@ export default function App() {
         if (await pathExists(projectPath)) {
           throw new Error(`Target folder already exists: ${projectPath}`);
         }
-        if (!(await pathExists(cfg.location))) {
-          throw new Error(`Parent folder does not exist: ${cfg.location}`);
-        }
+        await ensureDir(cfg.location);
         const git = await checkTool("git");
         if (!git) {
           throw new Error("Git not found on PATH — install it first, then try again.");
@@ -698,6 +731,8 @@ export default function App() {
         if (!(await pathExists(projectPath))) {
           throw new Error("git clone reported success but the target folder wasn't created.");
         }
+
+        await ensureGitignore(projectPath, dataRef.current!.settings.autoGitignore);
 
         const presetId = await detectProjectType(projectPath);
         const project: Project = {
