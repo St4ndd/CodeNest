@@ -1806,19 +1806,75 @@ fn data_file(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir.join("codenest.json"))
 }
 
+// A rolling copy of the last known-good save, kept next to the main data
+// file (same app-data dir, so it survives app updates/reinstalls exactly
+// like codenest.json) and used to auto-recover if a write gets interrupted
+// (crash, power loss, update mid-save) and leaves codenest.json corrupted.
+fn backup_file(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    Ok(dir.join("codenest.backup.json"))
+}
+
+fn is_valid_json(content: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(content).is_ok()
+}
+
 #[tauri::command]
 fn load_data(app: AppHandle) -> Result<Option<String>, String> {
     let f = data_file(&app)?;
-    if f.exists() {
-        fs::read_to_string(f).map(Some).map_err(|e| e.to_string())
-    } else {
-        Ok(None)
+    if let Ok(content) = fs::read_to_string(&f) {
+        if is_valid_json(&content) {
+            return Ok(Some(content));
+        }
+        // codenest.json exists but is corrupted — fall back to the backup
+        // instead of silently starting the user over with an empty state.
+        if let Ok(backup) = fs::read_to_string(backup_file(&app)?) {
+            if is_valid_json(&backup) {
+                return Ok(Some(backup));
+            }
+        }
+        return Ok(Some(content));
     }
+    Ok(None)
 }
 
 #[tauri::command]
 fn save_data(app: AppHandle, json: String) -> Result<(), String> {
-    fs::write(data_file(&app)?, json).map_err(|e| e.to_string())
+    let f = data_file(&app)?;
+    // Keep a backup of the previous good save before overwriting it.
+    if f.exists() {
+        let _ = fs::copy(&f, backup_file(&app)?);
+    }
+    // Write to a temp file first and rename into place so a crash or power
+    // loss mid-write can never leave codenest.json half-written/corrupted.
+    let tmp = f.with_extension("json.tmp");
+    fs::write(&tmp, &json).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &f).map_err(|e| e.to_string())
+}
+
+/// Copies the current data file to a user-chosen location so todos, projects,
+/// notes, settings etc. can be backed up manually (e.g. before moving to a
+/// new machine or wiping %APPDATA%).
+#[tauri::command]
+fn export_data(app: AppHandle, target: String) -> Result<(), String> {
+    fs::copy(data_file(&app)?, &target).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Restores app data from a previously exported backup file, replacing the
+/// current codenest.json (after backing it up first).
+#[tauri::command]
+fn import_data(app: AppHandle, source: String) -> Result<String, String> {
+    let content = fs::read_to_string(&source).map_err(|e| e.to_string())?;
+    if !is_valid_json(&content) {
+        return Err("This file isn't a valid CodeNest backup.".into());
+    }
+    let f = data_file(&app)?;
+    if f.exists() {
+        let _ = fs::copy(&f, backup_file(&app)?);
+    }
+    fs::write(&f, &content).map_err(|e| e.to_string())?;
+    Ok(content)
 }
 
 #[tauri::command]
@@ -1889,6 +1945,8 @@ pub fn run() {
             detect_project_type,
             load_data,
             save_data,
+            export_data,
+            import_data,
             default_projects_dir,
             get_close_to_tray,
             set_close_to_tray,

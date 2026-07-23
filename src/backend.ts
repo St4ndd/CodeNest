@@ -89,6 +89,10 @@ export const loadData = () => invoke<string | null>("load_data");
 
 export const saveData = (json: string) => invoke<void>("save_data", { json });
 
+export const exportData = (target: string) => invoke<void>("export_data", { target });
+
+export const importData = (source: string) => invoke<string>("import_data", { source });
+
 export const defaultProjectsDir = () => invoke<string>("default_projects_dir");
 
 export const getCloseToTray = () => invoke<boolean>("get_close_to_tray");

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getVersion } from "@tauri-apps/api/app";
 import { check as checkForUpdate, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import type { AppData, Group, IdeConfig, TerminalProfile, WindowPresetKey } from "../types";
-import { detectIdes } from "../backend";
+import { detectIdes, exportData, importData } from "../backend";
 import { groupTree } from "../project-meta";
 import { IconPlus, IconRefresh, IconStar, IconTag, IconTrash } from "../icons";
 
@@ -43,6 +43,7 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
     "idle" | "checking" | "none" | "available" | "installing"
   >("idle");
   const [pendingUpdate, setPendingUpdate] = useState<Update | null>(null);
+  const [backupBusy, setBackupBusy] = useState<"export" | "import" | null>(null);
 
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => {});
@@ -187,6 +188,48 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
       });
     }
     setRenamingGroupId(null);
+  }
+
+  async function handleExportBackup() {
+    const target = await save({
+      title: "Export CodeNest settings",
+      defaultPath: "codenest-settings.json",
+      filters: [{ name: "CodeNest settings", extensions: ["json"] }],
+    });
+    if (!target) return;
+    setBackupBusy("export");
+    try {
+      await exportData(target);
+      toast("Settings exported.");
+    } catch (err) {
+      toast(`Export failed: ${err}`);
+    } finally {
+      setBackupBusy(null);
+    }
+  }
+
+  async function handleImportBackup() {
+    const source = await open({
+      title: "Import CodeNest settings",
+      filters: [{ name: "CodeNest settings", extensions: ["json"] }],
+    });
+    if (typeof source !== "string") return;
+    if (
+      !window.confirm(
+        "This replaces all current projects, todos, notes, API requests and settings with the contents of this file. CodeNest will restart. Continue?"
+      )
+    ) {
+      return;
+    }
+    setBackupBusy("import");
+    try {
+      await importData(source);
+      toast("Settings imported — restarting…");
+      await relaunch();
+    } catch (err) {
+      toast(`Import failed: ${err}`);
+      setBackupBusy(null);
+    }
   }
 
   function removeGroup(id: string) {
@@ -481,6 +524,24 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3>Export / Import settings</h3>
+        <p className="muted">
+          Projects, todos, notes, API requests, IDEs and settings already live in your Windows
+          user profile (not the app's install folder), so they survive normal app updates and
+          reinstalls automatically. Use "Export settings" to save everything into a single file
+          you can bring to another PC, then use "Import settings" there to get it all back.
+        </p>
+        <div className="settings-input" style={{ display: "flex", gap: 8 }}>
+          <button className="btn" onClick={handleExportBackup} disabled={backupBusy !== null}>
+            {backupBusy === "export" ? "Exporting…" : "Export settings…"}
+          </button>
+          <button className="btn" onClick={handleImportBackup} disabled={backupBusy !== null}>
+            {backupBusy === "import" ? "Importing…" : "Import settings…"}
+          </button>
         </div>
       </div>
 
