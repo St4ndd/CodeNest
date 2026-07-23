@@ -1,6 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { ApiEndpoint, ApiHeader, ApiResponse, ExitPayload, HttpMethod, IdeConfig, ProcStats } from "./types";
+import type {
+  ApiEndpoint,
+  ApiHeader,
+  ApiResponse,
+  ExitPayload,
+  GitStatusInfo,
+  HttpMethod,
+  IdeConfig,
+  ProcStats,
+} from "./types";
 
 export const spawnProcess = (id: string, command: string, cwd: string) =>
   invoke<void>("spawn_process", { id, command, cwd });
@@ -59,6 +68,8 @@ export const scaffoldBuiltin = (kind: string, dir: string, name: string) =>
 
 export const detectProjectType = (path: string) =>
   invoke<string>("detect_project_type", { path });
+
+export const gitStatus = (path: string) => invoke<GitStatusInfo>("git_status", { path });
 
 export const httpRequest = (method: HttpMethod, url: string, headers: ApiHeader[], body: string) =>
   invoke<{

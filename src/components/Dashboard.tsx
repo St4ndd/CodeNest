@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useState } from "react";
-import type { AppData, IdeConfig, InstallJob, ProcStats, Project, RunConfig } from "../types";
+import type { AppData, GitStatusInfo, IdeConfig, InstallJob, ProcStats, Project, RunConfig } from "../types";
 import { getProjectMeta, groupTree, resolveRunConfigs } from "../project-meta";
-import { pathExists } from "../backend";
+import { gitStatus, pathExists } from "../backend";
 import Menu from "./Menu";
 import {
   IconArchive,
@@ -11,6 +11,7 @@ import {
   IconDownload,
   IconExternalLink,
   IconFolder,
+  IconGitBranch,
   IconGlobe,
   IconMoreHorizontal,
   IconPackage,
@@ -25,6 +26,8 @@ import {
   IconX,
   PresetIcon,
 } from "../icons";
+
+const GIT_STATUS_REFRESH_MS = 15000;
 
 const COLLAPSED_GROUPS_KEY = "codenest.collapsedGroups";
 
@@ -330,6 +333,24 @@ function ProjectCardInner(props: DashboardProps & { project: Project }) {
     };
   }, [p.path]);
 
+  const [git, setGit] = useState<GitStatusInfo | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => {
+      gitStatus(p.path)
+        .then((status) => {
+          if (!cancelled) setGit(status);
+        })
+        .catch(() => {});
+    };
+    refresh();
+    const timer = setInterval(refresh, GIT_STATUS_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [p.path]);
+
   const allConfigs = hasDocker && !runConfigs.some((c) => c.id === "docker-up")
     ? [...runConfigs, DOCKER_CONFIG]
     : runConfigs;
@@ -359,7 +380,26 @@ function ProjectCardInner(props: DashboardProps & { project: Project }) {
             )}
             {p.archived && <span className="badge">archived</span>}
           </div>
-          <span className="card-preset">{meta.name}</span>
+          <div className="card-preset-row">
+            <span className="card-preset">{meta.name}</span>
+            {git?.has_git && (
+              <span
+                className={`badge git-badge ${git.dirty ? "git-badge-dirty" : ""}`}
+                title={[
+                  `Branch: ${git.branch ?? "detached"}`,
+                  git.dirty ? "Uncommitted changes" : "Clean",
+                  git.ahead > 0 ? `${git.ahead} ahead` : null,
+                  git.behind > 0 ? `${git.behind} behind` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              >
+                <IconGitBranch size={11} />
+                {git.branch ?? "detached"}
+                {git.dirty && <span className="git-dot" />}
+              </span>
+            )}
+          </div>
         </div>
         <button
           className={`icon-btn star ${p.favorite ? "star-on" : ""}`}

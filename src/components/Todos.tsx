@@ -1,16 +1,38 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { AppData, Project } from "../types";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { AppData, Project, TodoItem } from "../types";
 import { getProjectMeta } from "../project-meta";
-import { IconChecklist, IconChevronDown, IconPlus, IconSearch, IconTrash, PresetIcon } from "../icons";
+import {
+  IconChecklist,
+  IconChevronDown,
+  IconGripVertical,
+  IconPlus,
+  IconSearch,
+  IconTrash,
+  PresetIcon,
+} from "../icons";
 
 interface TodosProps {
   data: AppData;
   onAdd: (projectId: string, text: string) => void;
   onToggle: (projectId: string, todoId: string) => void;
   onDelete: (projectId: string, todoId: string) => void;
+  onReorder: (projectId: string, todoIds: string[]) => void;
 }
 
-export default function Todos({ data, onAdd, onToggle, onDelete }: TodosProps) {
+/** Moves `id` to sit right before `beforeId` in `ids`, returning the same
+ * array reference when nothing actually changes (so React can skip the
+ * re-render while a drag hovers over the same spot). */
+function reorderIds(ids: string[], id: string, beforeId: string): string[] {
+  const from = ids.indexOf(id);
+  const to = ids.indexOf(beforeId);
+  if (from === -1 || to === -1 || from === to) return ids;
+  const next = [...ids];
+  next.splice(from, 1);
+  next.splice(to, 0, id);
+  return next;
+}
+
+export default function Todos({ data, onAdd, onToggle, onDelete, onReorder }: TodosProps) {
   const allProjects = useMemo(
     () => data.projects.filter((p) => !p.archived).sort((a, b) => a.name.localeCompare(b.name)),
     [data.projects]
@@ -28,13 +50,71 @@ export default function Todos({ data, onAdd, onToggle, onDelete }: TodosProps) {
   const selected: Project | undefined =
     allProjects.find((p) => p.id === selectedId) ?? projectsWithTodos[0];
 
-  const todos = useMemo(() => {
-    const list = selected?.todos ?? [];
-    return [...list].sort((a, b) => {
-      if (a.done !== b.done) return a.done ? 1 : -1;
-      return a.createdAt.localeCompare(b.createdAt);
+  // The todo list's display order *is* its priority order — drag handles let
+  // the user set it directly instead of it being derived from createdAt/done.
+  const [orderIds, setOrderIds] = useState<string[]>([]);
+  useEffect(() => {
+    const ids = (selected?.todos ?? []).map((t) => t.id);
+    setOrderIds((prev) => {
+      const prevSet = new Set(prev);
+      const sameSet = prev.length === ids.length && ids.every((id) => prevSet.has(id));
+      if (sameSet) return prev;
+      const idsSet = new Set(ids);
+      const kept = prev.filter((id) => idsSet.has(id));
+      const added = ids.filter((id) => !prevSet.has(id));
+      return [...kept, ...added];
     });
+  }, [selected?.id, selected?.todos]);
+
+  const todoById = useMemo(() => {
+    const map = new Map<string, TodoItem>();
+    for (const t of selected?.todos ?? []) map.set(t.id, t);
+    return map;
   }, [selected]);
+  const todos = orderIds.map((id) => todoById.get(id)).filter((t): t is TodoItem => !!t);
+
+  // Drag-to-reorder with a FLIP animation: before an order change we snapshot
+  // every row's position, then on the next layout animate from there to the
+  // new position instead of letting rows just jump.
+  const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const flipRectsRef = useRef<Map<string, DOMRect> | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+
+  function snapshotRects() {
+    const map = new Map<string, DOMRect>();
+    rowRefs.current.forEach((el, id) => map.set(id, el.getBoundingClientRect()));
+    return map;
+  }
+
+  function dragOver(overId: string) {
+    if (!dragId || dragId === overId) return;
+    flipRectsRef.current = snapshotRects();
+    setOrderIds((prev) => reorderIds(prev, dragId, overId));
+  }
+
+  function endDrag() {
+    if (dragId && selected) onReorder(selected.id, orderIds);
+    setDragId(null);
+  }
+
+  useLayoutEffect(() => {
+    const before = flipRectsRef.current;
+    if (!before) return;
+    flipRectsRef.current = null;
+    rowRefs.current.forEach((el, id) => {
+      const from = before.get(id);
+      if (!from) return;
+      const to = el.getBoundingClientRect();
+      const dy = from.top - to.top;
+      if (!dy) return;
+      el.style.transition = "none";
+      el.style.transform = `translateY(${dy}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = "transform 220ms cubic-bezier(0.2, 0, 0, 1)";
+        el.style.transform = "";
+      });
+    });
+  }, [orderIds]);
 
   function submit() {
     const trimmed = text.trim();
@@ -119,7 +199,34 @@ export default function Todos({ data, onAdd, onToggle, onDelete }: TodosProps) {
                 ) : (
                   <div className="todo-list">
                     {todos.map((t) => (
-                      <div key={t.id} className={`todo-row ${t.done ? "todo-done" : ""}`}>
+                      <div
+                        key={t.id}
+                        ref={(el) => {
+                          if (el) rowRefs.current.set(t.id, el);
+                          else rowRefs.current.delete(t.id);
+                        }}
+                        className={`todo-row ${t.done ? "todo-done" : ""} ${dragId === t.id ? "todo-row-dragging" : ""}`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          dragOver(t.id);
+                        }}
+                        onDrop={(e) => e.preventDefault()}
+                        onTransitionEnd={(e) => {
+                          if (e.propertyName === "transform") e.currentTarget.style.transition = "";
+                        }}
+                      >
+                        <span
+                          className="todo-grab"
+                          draggable
+                          title="Drag to reorder"
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            setDragId(t.id);
+                          }}
+                          onDragEnd={endDrag}
+                        >
+                          <IconGripVertical size={14} />
+                        </span>
                         <input
                           type="checkbox"
                           className="todo-checkbox"

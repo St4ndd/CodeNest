@@ -483,6 +483,13 @@ export default function App() {
     updateProjectTodos(projectId, (todos) => (todos ?? []).filter((t) => t.id !== todoId));
   };
 
+  const handleReorderTodos = (projectId: string, todoIds: string[]) => {
+    updateProjectTodos(projectId, (todos) => {
+      const byId = new Map((todos ?? []).map((t) => [t.id, t]));
+      return todoIds.map((id) => byId.get(id)).filter((t): t is NonNullable<typeof t> => !!t);
+    });
+  };
+
   const handleAddNote = (): Note => {
     const current = dataRef.current!;
     const now = new Date().toISOString();
@@ -945,6 +952,7 @@ export default function App() {
             onAdd={handleAddTodo}
             onToggle={handleToggleTodo}
             onDelete={handleDeleteTodo}
+            onReorder={handleReorderTodos}
           />
         )}
         {view === "notes" && (

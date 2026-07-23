@@ -162,6 +162,14 @@ export interface ProcStats {
   memory_mb: number;
 }
 
+export interface GitStatusInfo {
+  has_git: boolean;
+  branch: string | null;
+  dirty: boolean;
+  ahead: number;
+  behind: number;
+}
+
 /** An in-flight (or just-finished) project creation, tracked at the App level
  * so it survives navigating away from the "New Project" wizard. */
 export interface InstallJob {

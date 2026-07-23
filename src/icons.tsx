@@ -255,6 +255,27 @@ export const IconChevronRight = ({ size = 16, ...p }: IconProps) => (
   </svg>
 );
 
+export const IconGripVertical = ({ size = 16, ...p }: IconProps) => (
+  <svg {...base(size, p)} fill="currentColor" stroke="none">
+    <circle cx="9" cy="5.5" r="1.4" />
+    <circle cx="9" cy="12" r="1.4" />
+    <circle cx="9" cy="18.5" r="1.4" />
+    <circle cx="15" cy="5.5" r="1.4" />
+    <circle cx="15" cy="12" r="1.4" />
+    <circle cx="15" cy="18.5" r="1.4" />
+  </svg>
+);
+
+export const IconGitBranch = ({ size = 16, ...p }: IconProps) => (
+  <svg {...base(size, p)}>
+    <circle cx="6" cy="5.5" r="2" />
+    <circle cx="6" cy="18.5" r="2" />
+    <circle cx="18" cy="9.5" r="2" />
+    <path d="M6 7.5v9" />
+    <path d="M6 10.5c0 3 3 3 6 3s6 0 6-2.5V9.5" />
+  </svg>
+);
+
 export const IconUpload = ({ size = 16, ...p }: IconProps) => (
   <svg {...base(size, p)}>
     <path d="M12 21V9" />
