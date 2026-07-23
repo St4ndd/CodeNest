@@ -227,6 +227,69 @@ fn is_directory(path: String) -> bool {
     Path::new(&path).is_dir()
 }
 
+#[derive(Serialize, Clone)]
+struct GitStatus {
+    has_git: bool,
+    branch: Option<String>,
+    dirty: bool,
+    ahead: u32,
+    behind: u32,
+}
+
+fn run_git(dir: &Path, args: &[&str]) -> Option<String> {
+    let mut cmd = Command::new("git");
+    cmd.args(args).current_dir(dir);
+    hide_window(&mut cmd);
+    let out = cmd.output().ok()?;
+    if out.status.success() {
+        Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    } else {
+        None
+    }
+}
+
+/// Reports whether `path` is a git repo and, if so, its current branch,
+/// whether it has uncommitted changes, and how far it's diverged from its
+/// upstream (0/0 when there's no upstream configured).
+#[tauri::command]
+fn git_status(path: String) -> GitStatus {
+    let dir = Path::new(&path);
+    if !dir.join(".git").exists() {
+        return GitStatus {
+            has_git: false,
+            branch: None,
+            dirty: false,
+            ahead: 0,
+            behind: 0,
+        };
+    }
+
+    let branch = run_git(dir, &["symbolic-ref", "--short", "-q", "HEAD"])
+        .filter(|s| !s.is_empty())
+        .or_else(|| run_git(dir, &["rev-parse", "--short", "HEAD"]).map(|s| format!("({s})")));
+
+    let dirty = run_git(dir, &["status", "--porcelain"])
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
+
+    let (ahead, behind) = run_git(dir, &["rev-list", "--left-right", "--count", "HEAD...@{upstream}"])
+        .and_then(|s| {
+            let mut parts = s.split_whitespace();
+            let ahead = parts.next()?.parse().ok()?;
+            let behind = parts.next()?.parse().ok()?;
+            Some((ahead, behind))
+        })
+        .unwrap_or((0, 0));
+
+    GitStatus {
+        has_git: true,
+        branch,
+        dirty,
+        ahead,
+        behind,
+    }
+}
+
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| e.to_string())
@@ -1943,6 +2006,7 @@ pub fn run() {
             open_with_default,
             scaffold_builtin,
             detect_project_type,
+            git_status,
             load_data,
             save_data,
             export_data,

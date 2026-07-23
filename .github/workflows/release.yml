@@ -10,15 +10,33 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: --bundles msi
+          - platform: macos-latest
+            args: --target universal-apple-darwin --bundles dmg
+          - platform: ubuntu-22.04
+            args: --bundles deb,appimage
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install frontend dependencies
         run: npm ci
@@ -34,3 +52,4 @@ jobs:
           releaseBody: "See the assets below to download this version."
           releaseDraft: true
           prerelease: false
+          args: ${{ matrix.args }}

@@ -458,6 +458,31 @@ select:focus {
   font-size: 12px;
 }
 
+.card-preset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.git-badge {
+  gap: 4px;
+  padding: 1px 6px;
+}
+
+.git-badge-dirty {
+  border-color: rgba(245, 166, 35, 0.4);
+  color: var(--yellow);
+}
+
+.git-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--yellow);
+  display: inline-block;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -1613,6 +1638,28 @@ textarea:focus {
 .todo-delete {
   opacity: 0;
   transition: opacity 0.12s;
+}
+
+.todo-grab {
+  display: flex;
+  align-items: center;
+  color: var(--muted2);
+  opacity: 0.35;
+  cursor: grab;
+  flex-shrink: 0;
+  transition: opacity 0.12s;
+}
+
+.todo-row:hover .todo-grab {
+  opacity: 0.9;
+}
+
+.todo-grab:active {
+  cursor: grabbing;
+}
+
+.todo-row-dragging {
+  opacity: 0.5;
 }
 
 /* ── Todos / Notes tab switch ───────────────────────── */
