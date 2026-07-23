@@ -1,6 +1,6 @@
 [package]
 name = "codenest"
-version = "0.1.0"
+version = "0.2.0"
 description = "CodeNest — create, manage and launch dev projects"
 authors = ["Johannes Hehl"]
 edition = "2021"
