@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouse
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { getVersion } from "@tauri-apps/api/app";
 import type {
   AppData,
   ConsoleLine,
@@ -105,6 +106,7 @@ export default function App() {
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [appVersion, setAppVersion] = useState("");
   const [installs, setInstalls] = useState<Record<string, InstallJob>>({});
   const [resumeInstallId, setResumeInstallId] = useState<string | null>(null);
   const [cloning, setCloning] = useState(false);
@@ -139,6 +141,10 @@ export default function App() {
     setData(d);
     saveData(JSON.stringify(d, null, 2)).catch(() => {});
     setCloseToTray(d.settings.closeToTray).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
   }, []);
 
   // ── Startup: load data + detect IDEs + migrate legacy fields ─────
@@ -874,7 +880,7 @@ export default function App() {
             <IconSettings size={16} /> Settings
           </button>
         </nav>
-        <div className="sidebar-footer">v0.2.0</div>
+        <div className="sidebar-footer">{appVersion && `v${appVersion}`}</div>
       </aside>
 
       <main className="main">
