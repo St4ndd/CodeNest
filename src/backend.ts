@@ -1,12 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
-  ApiEndpoint,
-  ApiHeader,
-  ApiResponse,
   ExitPayload,
   GitStatusInfo,
-  HttpMethod,
   IdeConfig,
   ProcStats,
 } from "./types";
@@ -70,31 +66,6 @@ export const detectProjectType = (path: string) =>
   invoke<string>("detect_project_type", { path });
 
 export const gitStatus = (path: string) => invoke<GitStatusInfo>("git_status", { path });
-
-export const httpRequest = (method: HttpMethod, url: string, headers: ApiHeader[], body: string) =>
-  invoke<{
-    status: number;
-    status_text: string;
-    headers: ApiHeader[];
-    body: string;
-    duration_ms: number;
-    error: string | null;
-  }>("http_request", { method, url, headers, body: body || null }).then(
-    (r): ApiResponse => ({
-      status: r.status,
-      statusText: r.status_text,
-      headers: r.headers,
-      body: r.body,
-      durationMs: r.duration_ms,
-      error: r.error,
-    })
-  );
-
-export const scanApiEndpoints = (path: string) =>
-  invoke<{ endpoints: ApiEndpoint[]; guessed_port: number | null }>("scan_api_endpoints", { path });
-
-export const checkPort = (host: string, port: number) =>
-  invoke<boolean>("check_port", { host, port });
 
 export const loadData = () => invoke<string | null>("load_data");
 

@@ -97,46 +97,11 @@ export interface Settings {
   activeWindowPreset: WindowPresetKey;
 }
 
-export interface ApiHeader {
-  key: string;
-  value: string;
-}
-
-export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-
-export interface ApiRequest {
-  id: string;
-  name: string;
-  method: HttpMethod;
-  url: string;
-  headers: ApiHeader[];
-  body: string;
-  /** Optional link to a project, like notes — a request doesn't have to belong to one. */
-  projectId?: string | null;
-  createdAt: string;
-}
-
-export interface ApiResponse {
-  status: number;
-  statusText: string;
-  headers: ApiHeader[];
-  body: string;
-  durationMs: number;
-  error?: string | null;
-}
-
-export interface ApiEndpoint {
-  method: string;
-  path: string;
-  file: string;
-}
-
 export interface AppData {
   projects: Project[];
   settings: Settings;
   customPresets: CustomPreset[];
   notes: Note[];
-  apiRequests: ApiRequest[];
 }
 
 export type StreamKind = "stdout" | "stderr" | "info";

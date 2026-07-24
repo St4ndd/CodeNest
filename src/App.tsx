@@ -9,7 +9,6 @@ import type {
   CustomPreset,
   ExitPayload,
   IdeConfig,
-  ApiRequest,
   InstallJob,
   Note,
   OutputPayload,
@@ -49,7 +48,6 @@ import NewProject from "./components/NewProject";
 import Settings from "./components/Settings";
 import Todos from "./components/Todos";
 import Notes from "./components/Notes";
-import ApiTester from "./components/ApiTester";
 import TitleBar from "./components/TitleBar";
 import ProjectSettingsModal from "./components/ProjectSettingsModal";
 import DuplicateModal from "./components/DuplicateModal";
@@ -63,7 +61,6 @@ import {
   IconPlus,
   IconChecklist,
   IconFileText,
-  IconSend,
   IconSettings,
   IconSquare,
   IconUpload,
@@ -71,7 +68,7 @@ import {
 } from "./icons";
 import "./App.css";
 
-type View = "dashboard" | "new" | "todos" | "notes" | "api" | "settings";
+type View = "dashboard" | "new" | "todos" | "notes" | "settings";
 
 const MAX_LINES = 3000;
 const URL_RE = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d{2,5})?[^\s"'<>)]*/i;
@@ -165,7 +162,6 @@ export default function App() {
       }
       d.customPresets = d.customPresets ?? [];
       d.notes = d.notes ?? [];
-      d.apiRequests = d.apiRequests ?? [];
       d.settings.groups = d.settings.groups ?? [];
       d.settings.defaultGroupId = d.settings.defaultGroupId ?? null;
       if (!d.settings.groups.some((g: { id: string }) => g.id === d.settings.defaultGroupId)) {
@@ -517,22 +513,6 @@ export default function App() {
     persist({ ...current, notes: current.notes.filter((n) => n.id !== id) });
   };
 
-  const handleSaveApiRequest = (request: ApiRequest) => {
-    const current = dataRef.current!;
-    const exists = current.apiRequests.some((r) => r.id === request.id);
-    persist({
-      ...current,
-      apiRequests: exists
-        ? current.apiRequests.map((r) => (r.id === request.id ? request : r))
-        : [request, ...current.apiRequests],
-    });
-  };
-
-  const handleDeleteApiRequest = (id: string) => {
-    const current = dataRef.current!;
-    persist({ ...current, apiRequests: current.apiRequests.filter((r) => r.id !== id) });
-  };
-
   const handleDuplicateConfirm = async (name: string, location: string) => {
     if (!duplicating) return;
     setDuplicateBusy(true);
@@ -868,12 +848,6 @@ export default function App() {
             <IconFileText size={16} /> Notes
           </button>
           <button
-            className={`nav-item ${view === "api" ? "nav-active" : ""}`}
-            onClick={() => setView("api")}
-          >
-            <IconSend size={16} /> API Tester
-          </button>
-          <button
             className={`nav-item ${view === "settings" ? "nav-active" : ""}`}
             onClick={() => setView("settings")}
           >
@@ -967,14 +941,6 @@ export default function App() {
             onAddNote={handleAddNote}
             onUpdateNote={handleUpdateNote}
             onDeleteNote={handleDeleteNote}
-          />
-        )}
-        {view === "api" && (
-          <ApiTester
-            data={data}
-            onSave={handleSaveApiRequest}
-            onDelete={handleDeleteApiRequest}
-            toast={toast}
           />
         )}
         {view === "settings" && <Settings data={data} onChange={persist} toast={toast} />}

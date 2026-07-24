@@ -963,6 +963,19 @@ select:focus {
 }
 
 /* ── Settings ───────────────────────────────────────── */
+.settings-category {
+  margin: 26px 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted2);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.settings-category:first-of-type {
+  margin-top: 4px;
+}
+
 .settings-section {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -1856,231 +1869,6 @@ textarea:focus {
   margin-left: 2px;
 }
 
-/* ── API Tester ──────────────────────────────────────── */
-.api-layout {
-  align-items: stretch;
-}
-
-.api-scan-btn {
-  margin-bottom: 10px;
-  justify-content: center;
-}
-
-.api-discovered {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border);
-}
-
-.api-port-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 9px 8px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-size: 11.5px;
-  cursor: pointer;
-  text-align: left;
-}
-
-.api-port-status:hover {
-  color: var(--text);
-}
-
-.api-url-status {
-  padding: 0 0 4px;
-  margin-top: -8px;
-}
-
-.api-saved-label {
-  display: block;
-  margin: 4px 0 4px 9px;
-}
-
-.api-endpoint-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 9px;
-  border-radius: 7px;
-  background: transparent;
-  border: none;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.api-endpoint-row:hover {
-  background: var(--bg2);
-}
-
-.api-endpoint-path {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: "Cascadia Mono", Consolas, monospace;
-}
-
-.api-method-badge {
-  flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.02em;
-}
-
-.method-get {
-  background: rgba(70, 167, 88, 0.15);
-  color: var(--green);
-}
-
-.method-post {
-  background: rgba(0, 112, 243, 0.15);
-  color: #4c9aff;
-}
-
-.method-put {
-  background: rgba(245, 166, 35, 0.15);
-  color: var(--yellow);
-}
-
-.method-patch {
-  background: rgba(245, 166, 35, 0.15);
-  color: var(--yellow);
-}
-
-.method-delete {
-  background: rgba(229, 72, 77, 0.15);
-  color: var(--red);
-}
-
-.api-main {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.api-request-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.api-name-input {
-  margin: 0;
-}
-
-.api-url-row {
-  display: flex;
-  gap: 8px;
-}
-
-.api-method-select {
-  flex-shrink: 0;
-  font-weight: 700;
-  width: 110px;
-}
-
-.api-url-input {
-  flex: 1;
-  font-family: "Cascadia Mono", Consolas, monospace;
-  font-size: 12.5px;
-}
-
-.api-headers-section,
-.api-body-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.api-header-row {
-  grid-template-columns: 1fr 1fr auto;
-}
-
-.api-body-area {
-  min-height: 120px;
-  font-family: "Cascadia Mono", Consolas, monospace;
-  font-size: 12.5px;
-}
-
-.api-response {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.api-response-sent-line {
-  padding: 8px 14px;
-  font-size: 11px;
-  color: var(--muted);
-  background: var(--panel2);
-  border-bottom: 1px solid var(--border);
-  font-family: "Cascadia Mono", Consolas, monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.api-response-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-}
-
-.api-response-tabs {
-  margin-left: auto;
-}
-
-.api-status {
-  font-size: 12.5px;
-  font-weight: 700;
-  font-family: "Cascadia Mono", Consolas, monospace;
-}
-
-.api-status-ok {
-  color: var(--green);
-}
-
-.api-status-redirect {
-  color: var(--yellow);
-}
-
-.api-status-error {
-  color: var(--red);
-}
-
-.api-response-body {
-  padding: 14px;
-  max-height: 320px;
-  overflow: auto;
-  font-family: "Cascadia Mono", Consolas, monospace;
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 0;
-}
-
-.api-response-header-row {
-  padding: 3px 0;
-}
-
-.api-response-header-key {
-  color: var(--muted);
-  font-weight: 600;
-}
-
-/* ── Searchable project combobox (Todos) ────────────── */
 .combobox {
   position: relative;
   margin-bottom: 10px;

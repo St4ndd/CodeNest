@@ -212,13 +212,6 @@ export const IconGlobe = ({ size = 16, ...p }: IconProps) => (
   </svg>
 );
 
-export const IconSend = ({ size = 16, ...p }: IconProps) => (
-  <svg {...base(size, p)}>
-    <path d="M21 3L3 10.5l7.5 3L13.5 21 21 3z" />
-    <path d="M10.5 13.5L21 3" />
-  </svg>
-);
-
 export const IconTag = ({ size = 16, ...p }: IconProps) => (
   <svg {...base(size, p)}>
     <path d="M12.5 4H6.5A1.5 1.5 0 0 0 5 5.5v6l9.3 9.3a1.5 1.5 0 0 0 2.1 0l5.4-5.4a1.5 1.5 0 0 0 0-2.1z" />

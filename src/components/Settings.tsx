@@ -216,7 +216,7 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
     if (typeof source !== "string") return;
     if (
       !window.confirm(
-        "This replaces all current projects, todos, notes, API requests and settings with the contents of this file. CodeNest will restart. Continue?"
+        "This replaces all current projects, todos, notes and settings with the contents of this file. CodeNest will restart. Continue?"
       )
     ) {
       return;
@@ -256,6 +256,8 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
         </div>
       </div>
 
+      <h2 className="settings-category">Projects</h2>
+
       <div className="settings-section">
         <h3>Default projects folder</h3>
         <p className="muted">New projects will be created here by default.</p>
@@ -284,82 +286,6 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
           />
           Create a .gitignore for new/imported projects that don't already have one
         </label>
-      </div>
-
-      <div className="settings-section">
-        <div className="settings-section-head">
-          <h3>IDEs &amp; Editors</h3>
-          <button className="btn" onClick={rescan} disabled={scanning}>
-            <IconRefresh size={14} /> {scanning ? "Scanning…" : "Re-scan installed IDEs"}
-          </button>
-        </div>
-        <p className="muted">
-          The default IDE is used by the “Open” button; every project can override it.
-        </p>
-
-        {settings.ides.length === 0 ? (
-          <p className="muted">No IDEs found. Add one manually below.</p>
-        ) : (
-          <div className="ide-list">
-            {settings.ides.map((ide) => (
-              <div key={ide.id} className="ide-row">
-                <label className="ide-radio">
-                  <input
-                    type="radio"
-                    name="default-ide"
-                    checked={settings.defaultIdeId === ide.id}
-                    onChange={() => update({ defaultIdeId: ide.id })}
-                  />
-                  <span className="ide-name">
-                    {ide.name}
-                    {settings.defaultIdeId === ide.id && (
-                      <span className="badge badge-default">default</span>
-                    )}
-                    {ide.custom && <span className="badge">custom</span>}
-                  </span>
-                </label>
-                <span className="ide-path" title={ide.path}>
-                  {ide.path}
-                </span>
-                {ide.custom && (
-                  <button
-                    className="icon-btn"
-                    title="Remove"
-                    onClick={() => removeCustom(ide.id)}
-                  >
-                    <IconTrash size={14} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <h4>Add IDE manually</h4>
-        <div className="custom-ide-form">
-          <input
-            placeholder="Display name (e.g. Eclipse)"
-            value={customName}
-            onChange={(e) => setCustomName(e.target.value)}
-          />
-          <div className="input-with-btn">
-            <input
-              placeholder="Path to executable…"
-              value={customPath}
-              onChange={(e) => setCustomPath(e.target.value)}
-            />
-            <button className="btn" onClick={browseCustomExe}>
-              Browse…
-            </button>
-          </div>
-          <button
-            className="btn btn-primary"
-            disabled={!customName.trim() || !customPath.trim()}
-            onClick={addCustom}
-          >
-            <IconPlus size={14} /> Add IDE
-          </button>
-        </div>
       </div>
 
       <div className="settings-section">
@@ -439,6 +365,84 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
         </div>
       </div>
 
+      <h2 className="settings-category">Tools</h2>
+
+      <div className="settings-section">
+        <div className="settings-section-head">
+          <h3>IDEs &amp; Editors</h3>
+          <button className="btn" onClick={rescan} disabled={scanning}>
+            <IconRefresh size={14} /> {scanning ? "Scanning…" : "Re-scan installed IDEs"}
+          </button>
+        </div>
+        <p className="muted">
+          The default IDE is used by the “Open” button; every project can override it.
+        </p>
+
+        {settings.ides.length === 0 ? (
+          <p className="muted">No IDEs found. Add one manually below.</p>
+        ) : (
+          <div className="ide-list">
+            {settings.ides.map((ide) => (
+              <div key={ide.id} className="ide-row">
+                <label className="ide-radio">
+                  <input
+                    type="radio"
+                    name="default-ide"
+                    checked={settings.defaultIdeId === ide.id}
+                    onChange={() => update({ defaultIdeId: ide.id })}
+                  />
+                  <span className="ide-name">
+                    {ide.name}
+                    {settings.defaultIdeId === ide.id && (
+                      <span className="badge badge-default">default</span>
+                    )}
+                    {ide.custom && <span className="badge">custom</span>}
+                  </span>
+                </label>
+                <span className="ide-path" title={ide.path}>
+                  {ide.path}
+                </span>
+                {ide.custom && (
+                  <button
+                    className="icon-btn"
+                    title="Remove"
+                    onClick={() => removeCustom(ide.id)}
+                  >
+                    <IconTrash size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h4>Add IDE manually</h4>
+        <div className="custom-ide-form">
+          <input
+            placeholder="Display name (e.g. Eclipse)"
+            value={customName}
+            onChange={(e) => setCustomName(e.target.value)}
+          />
+          <div className="input-with-btn">
+            <input
+              placeholder="Path to executable…"
+              value={customPath}
+              onChange={(e) => setCustomPath(e.target.value)}
+            />
+            <button className="btn" onClick={browseCustomExe}>
+              Browse…
+            </button>
+          </div>
+          <button
+            className="btn btn-primary"
+            disabled={!customName.trim() || !customPath.trim()}
+            onClick={addCustom}
+          >
+            <IconPlus size={14} /> Add IDE
+          </button>
+        </div>
+      </div>
+
       <div className="settings-section">
         <h3>Terminal</h3>
         <p className="muted">Shell used by “Open terminal here” and “Run in external terminal”.</p>
@@ -454,6 +458,8 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
           ))}
         </select>
       </div>
+
+      <h2 className="settings-category">Window</h2>
 
       <div className="settings-section">
         <h3>Window behavior</h3>
@@ -527,13 +533,15 @@ export default function Settings({ data, onChange, toast }: SettingsProps) {
         </div>
       </div>
 
+      <h2 className="settings-category">Data &amp; Updates</h2>
+
       <div className="settings-section">
         <h3>Export / Import settings</h3>
         <p className="muted">
-          Projects, todos, notes, API requests, IDEs and settings already live in your Windows
-          user profile (not the app's install folder), so they survive normal app updates and
-          reinstalls automatically. Use "Export settings" to save everything into a single file
-          you can bring to another PC, then use "Import settings" there to get it all back.
+          Projects, todos, notes, IDEs and settings already live in your Windows user profile
+          (not the app's install folder), so they survive normal app updates and reinstalls
+          automatically. Use "Export settings" to save everything into a single file you can
+          bring to another PC, then use "Import settings" there to get it all back.
         </p>
         <div className="settings-input" style={{ display: "flex", gap: 8 }}>
           <button className="btn" onClick={handleExportBackup} disabled={backupBusy !== null}>
