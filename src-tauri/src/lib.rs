@@ -1978,6 +1978,17 @@ fn apply_saved_window_size(app: &AppHandle, window: &tauri::WebviewWindow) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // A second launch attempt was made while we're already running —
+            // bring the existing window to the front instead of allowing a
+            // second instance to start (also covers the case where the app
+            // is minimized to the tray, not just backgrounded).
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
